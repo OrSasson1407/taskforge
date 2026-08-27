@@ -3,12 +3,19 @@
     {
       "collectionGroup": "jobs",
       "queryScope": "COLLECTION",
-      "fields": [ { "fieldPath": "state", "order": "ASCENDING" }, { "fieldPath": "priority", "order": "DESCENDING" }, { "fieldPath": "createdAt", "order": "ASCENDING" } ]
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "priority", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     },
     {
       "collectionGroup": "workers",
       "queryScope": "COLLECTION",
-      "fields": [ { "fieldPath": "state", "order": "ASCENDING" }, { "fieldPath": "lastHeartbeatAt", "order": "ASCENDING" } ]
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "lastHeartbeatAt", "order": "ASCENDING" }
+      ]
     }
   ]
 }

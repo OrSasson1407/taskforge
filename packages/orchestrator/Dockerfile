@@ -1,6 +1,10 @@
 FROM node:20-alpine
-WORKDIR /usr/src/app
+WORKDIR /app
 COPY package*.json ./
-RUN npm install
-COPY . .
-CMD ["npm", "run", "dev"]
+COPY packages/shared/package*.json ./packages/shared/
+COPY packages/orchestrator/package*.json ./packages/orchestrator/
+RUN npm ci --workspace=packages/orchestrator --workspace=packages/shared
+COPY packages/shared ./packages/shared
+COPY packages/orchestrator ./packages/orchestrator
+WORKDIR /app/packages/orchestrator
+CMD ["npm", "start"]

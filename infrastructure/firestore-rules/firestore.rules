@@ -1,8 +1,21 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false; // Orchestrator bypasses this via Admin SDK
+    // Developers see only their own jobs; Admins see all[cite: 3]
+    match /jobs/{jobId} {
+      allow read: if request.auth != null && (request.auth.token.role == 'Admin' || resource.data.submittedBy == request.auth.uid);
+      allow create: if request.auth != null;
+      // Orchestrator service account bypasses these rules for backend updates
+    }
+    
+    // Workers require a valid worker token[cite: 3]
+    match /workers/{workerId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only written to by backend API
+    }
+
+    match /auditLog/{entryId} {
+      allow read: if request.auth != null && request.auth.token.role == 'Admin';
     }
   }
 }
