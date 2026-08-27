@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  orchestrator:
+    build: 
+      context: ../packages/orchestrator
+      # We will add a Dockerfile to the orchestrator package later, 
+      # but for Phase 0 local dev, we can map volumes and run npm directly.
+    image: taskforge-orchestrator
+    command: npm run dev
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - WORKER_SHARED_SECRET=${WORKER_SHARED_SECRET}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+    volumes:
+      - ../packages/orchestrator:/usr/src/app
+      - ../packages/shared:/usr/src/shared
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ../packages/worker
+    image: taskforge-worker
+    command: npm run dev
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - ORCHESTRATOR_URL=http://orchestrator:${PORT:-3000}
+      - WORKER_SHARED_SECRET=${WORKER_SHARED_SECRET}
+    volumes:
+      - ../packages/worker:/usr/src/app
+      - ../packages/shared:/usr/src/shared
+    depends_on:
+      redis:
+        condition: service_healthy
+      orchestrator:
+        condition: service_started
+
+  dashboard:
+    build:
+      context: ../packages/dashboard
+    image: taskforge-dashboard
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:${PORT:-3000}/api/v1
+    volumes:
+      - ../packages/dashboard:/usr/src/app
+      - ../packages/shared:/usr/src/shared
+
+volumes:
+  redis_data:
