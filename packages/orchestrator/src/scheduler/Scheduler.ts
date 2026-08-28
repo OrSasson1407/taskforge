@@ -59,7 +59,8 @@ export class Scheduler {
                 `worker:${worker.id}:jobs`,
                 '*',
                 'jobId', job.id,
-                'payload', JSON.stringify(job.payload)
+                'payload', JSON.stringify(job.payload),
+                'retryCount', String(job.retryCount || 0)
             );
 
             scheduledCount++;

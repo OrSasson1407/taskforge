@@ -1,4 +1,5 @@
 ﻿import { redisClient } from '../../shared/src/redis/RedisClient';
+import { JobHandlers } from './registry';
 
 const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL || 'http://localhost:8080';
 const WORKER_ID = `worker-${Math.random().toString(36).substring(2, 9)}`;
@@ -41,21 +42,33 @@ async function startWorker() {
                         const messages = stream[1];
                         for (const message of messages) {
                             const [msgId, fields] = message;
-                            const jobId = fields[1];
-                            const payload = JSON.parse(fields[3]);
-                            
+                            // Fields arrive as a flat [key, value, key, value, ...] array from Redis.
+                            // Parse into a record instead of relying on fixed indices, since fields
+                            // may be added/reordered by the producer over time.
+                            const fieldMap: Record<string, string> = {};
+                            for (let i = 0; i < fields.length; i += 2) {
+                                fieldMap[fields[i]] = fields[i + 1];
+                            }
+                            const jobId = fieldMap['jobId'];
+                            const payload = JSON.parse(fieldMap['payload'] || '{}');
+                            const retryCount = parseInt(fieldMap['retryCount'] || '0', 10);
+
                             console.log(`[Worker ${WORKER_ID}] Received Job ${jobId} from stream. Executing...`);
-                            
+
                             try {
                                 await fetch(`${ORCHESTRATOR_URL}/jobs/${jobId}/state`, {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ newState: 'RUNNING' })
                                 });
-                                
-                                // Simulate work
-                                await new Promise(res => setTimeout(res, 1000));
-                                
+
+                                const handler = JobHandlers[payload.type];
+                                if (!handler) {
+                                    throw new Error(`No JobHandler registered for type "${payload.type}"`);
+                                }
+
+                                await handler(payload, { jobId, retryCount });
+
                                 await fetch(`${ORCHESTRATOR_URL}/jobs/${jobId}/state`, {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
@@ -63,7 +76,16 @@ async function startWorker() {
                                 });
                                 console.log(`[Worker ${WORKER_ID}] Job ${jobId} COMPLETED.`);
                             } catch (e: any) {
-                                console.error(`[Worker ${WORKER_ID}] Failed to transition job ${jobId}:`, e.message);
+                                console.error(`[Worker ${WORKER_ID}] Job ${jobId} failed:`, e.message);
+                                try {
+                                    await fetch(`${ORCHESTRATOR_URL}/jobs/${jobId}/state`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ newState: 'FAILED', message: e.message })
+                                    });
+                                } catch (patchErr: any) {
+                                    console.error(`[Worker ${WORKER_ID}] Failed to transition job ${jobId} to FAILED:`, patchErr.message);
+                                }
                             }
                         }
                     }

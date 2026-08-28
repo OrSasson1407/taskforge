@@ -1,32 +1,34 @@
 import { describe, it, expect } from 'vitest';
 import { WorkflowManager } from '../../packages/orchestrator/src/workflow/WorkflowManager';
+import { WorkflowTaskDef } from '../../packages/shared/src/Workflow';
 
 describe('WorkflowManager DAG Validation', () => {
-  it('should detect cycles in a DAG submission', () => {
-    const wm = new WorkflowManager({} as any);
-    const jobs = ['A', 'B', 'C'];
-    const edges = [
-      { from: 'A', to: 'B' },
-      { from: 'B', to: 'C' },
-      { from: 'C', to: 'A' } // Cycle
+  it('should throw when a DAG submission has a cycle', () => {
+    const tasks: WorkflowTaskDef[] = [
+      { id: 'A', payload: {}, dependsOn: ['C'] },
+      { id: 'B', payload: {}, dependsOn: ['A'] },
+      { id: 'C', payload: {}, dependsOn: ['B'] } // Cycle: A -> B -> C -> A
     ];
 
-    const cycle = wm.validateDag(jobs, edges);
-    expect(cycle).not.toBeNull();
-    expect(cycle).toContain('A');
+    expect(() => WorkflowManager.validateDAG(tasks)).toThrow(/cycle/i);
   });
 
-  it('should return null for a valid DAG', () => {
-    const wm = new WorkflowManager({} as any);
-    const jobs = ['A', 'B', 'C', 'D'];
-    const edges = [
-      { from: 'A', to: 'B' },
-      { from: 'A', to: 'C' },
-      { from: 'B', to: 'D' },
-      { from: 'C', to: 'D' }
+  it('should not throw for a valid diamond DAG', () => {
+    const tasks: WorkflowTaskDef[] = [
+      { id: 'A', payload: {} },
+      { id: 'B', payload: {}, dependsOn: ['A'] },
+      { id: 'C', payload: {}, dependsOn: ['A'] },
+      { id: 'D', payload: {}, dependsOn: ['B', 'C'] }
     ];
 
-    const cycle = wm.validateDag(jobs, edges);
-    expect(cycle).toBeNull();
+    expect(() => WorkflowManager.validateDAG(tasks)).not.toThrow();
+  });
+
+  it('should throw when a task depends on a non-existent task', () => {
+    const tasks: WorkflowTaskDef[] = [
+      { id: 'A', payload: {}, dependsOn: ['ghost'] }
+    ];
+
+    expect(() => WorkflowManager.validateDAG(tasks)).toThrow(/does not exist/i);
   });
 });
