@@ -1,4 +1,4 @@
-import request from 'supertest';
+﻿import request from 'supertest';
 import { app } from '../../packages/orchestrator/src/api/ApiGateway';
 import { AuthService } from '../../packages/orchestrator/src/auth/AuthService';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -41,7 +41,9 @@ describe('Phase 5 - Retries & Fault Tolerance', () => {
         expect(res.body.reclaimedCount).toBeGreaterThanOrEqual(1);
 
         // Verify the job was pushed back to PENDING
-        const jobRes = await request(app).get(`/jobs/${jobId}`);
+        const jobRes = await request(app)
+            .get(`/jobs/${jobId}`)
+            .set('Authorization', `Bearer ${token}`);
         expect(jobRes.body.state).toBe('PENDING');
         expect(jobRes.body.retryCount).toBe(1);
         expect(jobRes.body.assignedWorker).toBeNull();
@@ -56,11 +58,16 @@ describe('Phase 5 - Retries & Fault Tolerance', () => {
         });
 
         // Fail the job
-        const res = await request(app).post(`/jobs/${jobId}/fail`).send({ reason: 'Simulated failure' });
+        const res = await request(app)
+            .post(`/jobs/${jobId}/fail`)
+            .set('Authorization', `Bearer ${token}`)
+            .send({ reason: 'Simulated failure' });
         expect(res.status).toBe(200);
 
         // Verify it went to FAILED, not PENDING
-        const jobRes = await request(app).get(`/jobs/${jobId}`);
+        const jobRes = await request(app)
+            .get(`/jobs/${jobId}`)
+            .set('Authorization', `Bearer ${token}`);
         expect(jobRes.body.state).toBe('FAILED');
     });
 });

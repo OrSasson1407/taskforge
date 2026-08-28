@@ -1,3 +1,4 @@
+﻿import '../firebase';
 import express, { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../auth/AuthService';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -266,3 +267,4 @@ app.post('/simulation/chaos/kill-workers', requireRole('admin'), async (req, res
         res.status(500).json({ error: error.message });
     }
 });
+
