@@ -1,4 +1,4 @@
-﻿import request from 'supertest';
+import request from 'supertest';
 import { app } from '../../packages/orchestrator/src/api/ApiGateway';
 
 describe('Phase 3 - Worker Management', () => {
@@ -15,7 +15,7 @@ describe('Phase 3 - Worker Management', () => {
     });
 
     it('Accepts heartbeat for registered worker', async () => {
-        const res = await request(app).post(\/workers/\/heartbeat\);
+        const res = await request(app).post(`/workers/${workerId}/heartbeat`);
         expect(res.status).toBe(200);
         expect(res.body.status).toBe('ok');
     });
