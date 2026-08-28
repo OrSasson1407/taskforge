@@ -4,7 +4,7 @@ services:
     image: redis:7-alpine
     command: redis-server --appendonly yes # AOF persistence enabled[cite: 2]
     ports:
-      - '6379:6379'
+      - '6367:6379'
 
   orchestrator:
     build:
@@ -14,7 +14,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
     ports:
-      - '8080:8080'
+      - '8067:8080'
     depends_on:
       - redis
       - firestore-emulator
@@ -40,4 +40,5 @@ services:
       context: ../
       dockerfile: packages/dashboard/Dockerfile
     ports:
-      - '3000:3000'
+      - '3001:3000'
+

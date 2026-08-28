@@ -1,5 +1,5 @@
-import express from 'express';
-import { Firestore } from '@google-cloud/firestore';
+import express, { Request, Response } from "express";
+import { Firestore } from "@google-cloud/firestore";
 
 export class ApiGateway {
   public app = express();
@@ -10,27 +10,27 @@ export class ApiGateway {
   }
 
   private setupRoutes() {
-    this.app.post('/api/v1/jobs', async (req, res) => {
+    this.app.post("/api/v1/jobs", async (req: Request, res: Response) => {
       const { type, payload, priority = 0 } = req.body;
-      const jobRef = this.db.collection('jobs').doc();
+      const jobRef = this.db.collection("jobs").doc();
       
       await jobRef.set({
         type,
         payload,
         priority,
-        state: 'QUEUED',
+        state: "QUEUED",
         createdAt: Date.now(),
         attempt: 0,
         maxAttempts: 3
       });
       
-      res.status(201).json({ jobId: jobRef.id, state: 'QUEUED' });
+      res.status(201).json({ jobId: jobRef.id, state: "QUEUED" });
     });
   }
 
   start(port: number) {
     this.app.listen(port, () => {
-      console.log(\API Gateway listening on port \\);
+      console.log("API Gateway listening on port " + port);
     });
   }
 }

@@ -1,10 +1,9 @@
-import { Firestore } from '@google-cloud/firestore';
+import { Firestore } from "@google-cloud/firestore";
 
 export async function executeJob(db: Firestore, workerId: string) {
-  // Poll for ASSIGNED jobs for this specific worker
-  const assignedJobs = await db.collection('jobs')
-    .where('assignedWorkerId', '==', workerId)
-    .where('state', '==', 'ASSIGNED')
+  const assignedJobs = await db.collection("jobs")
+    .where("assignedWorkerId", "==", workerId)
+    .where("state", "==", "ASSIGNED")
     .limit(1)
     .get();
 
@@ -14,18 +13,15 @@ export async function executeJob(db: Firestore, workerId: string) {
   const job = jobDoc.data();
 
   try {
-    // Acknowledge and start running[cite: 6]
-    await jobDoc.ref.update({ state: 'RUNNING' });
-    console.log(\Executing job \ of type \...\);
+    await jobDoc.ref.update({ state: "RUNNING" });
+    console.log("Executing job " + jobDoc.id + " of type " + job?.type + "...");
     
-    // Simulate execution time
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Report success
-    await jobDoc.ref.update({ state: 'SUCCEEDED', result: { status: 'ok' } });
-    console.log(\Job \ succeeded.\);
-  } catch (error) {
-    console.error(\Job \ failed:\, error);
-    await jobDoc.ref.update({ state: 'FAILED', error: error.message });
+    await jobDoc.ref.update({ state: "SUCCEEDED", result: { status: "ok" } });
+    console.log("Job " + jobDoc.id + " succeeded.");
+  } catch (error: any) {
+    console.error("Job " + jobDoc.id + " failed:", error);
+    await jobDoc.ref.update({ state: "FAILED", error: error.message });
   }
 }
