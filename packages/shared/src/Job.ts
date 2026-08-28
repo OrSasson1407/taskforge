@@ -1,30 +1,33 @@
-export type JobState = 
-  | 'CREATED' 
-  | 'WAITING_FOR_DEPENDENCIES' 
-  | 'QUEUED' 
-  | 'SCHEDULED' 
-  | 'ASSIGNED' 
-  | 'RUNNING' 
-  | 'SUCCEEDED' 
-  | 'FAILED' 
-  | 'TIMED_OUT' 
-  | 'CANCELLED' 
-  | 'RETRY_PENDING' 
-  | 'DEAD_LETTER'; // Derived from Document 2, Section 9[cite: 5]
+﻿export type JobState = 'PENDING' | 'BLOCKED' | 'SCHEDULED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+
+export function isValidJobTransition(current: JobState, next: JobState): boolean {
+    const allowed: Record<JobState, JobState[]> = {
+        PENDING: ['SCHEDULED', 'CANCELLED'],
+        BLOCKED: ['PENDING', 'CANCELLED'], // Can transition to PENDING when dependencies are met
+        SCHEDULED: ['RUNNING', 'FAILED', 'CANCELLED'],
+        RUNNING: ['COMPLETED', 'FAILED', 'CANCELLED'],
+        COMPLETED: [],
+        FAILED: ['PENDING'], 
+        CANCELLED: []
+    };
+    return allowed[current]?.includes(next) ?? false;
+}
+
+export interface JobEvent {
+    id: string;
+    jobId: string;
+    state: JobState;
+    timestamp: number;
+    message?: string;
+}
 
 export interface Job {
-  id: string;
-  type: string;
-  payload: any;
-  priority: number;
-  state: JobState;
-  attempt: number;
-  maxAttempts: number;
-  dependsOn?: string[];
-  workflowId?: string;
-  assignedWorkerId?: string;
-  createdAt: number;
-  updatedAt: number;
-  result?: any;
-  error?: any;
+    id: string;
+    workflowId?: string;
+    localId?: string;
+    state: JobState;
+    payload: Record<string, any>;
+    dependencies?: string[]; // Array of global job IDs this job waits for
+    createdAt: number;
+    updatedAt: number;
 }

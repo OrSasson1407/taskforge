@@ -1,18 +1,17 @@
-import * as jwt from 'jsonwebtoken';
+﻿import * as jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'taskforge-dev-secret-key';
 
 export class AuthService {
-  verifyToken(token: string): any {
-    try {
-      // Short-lived JWT verification[cite: 3]
-      return jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-      throw new Error('Unauthorized');
+    static generateToken(userId: string): string {
+        return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: '1h' });
     }
-  }
 
-  generateToken(payload: any): string {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
-  }
+    static verifyToken(token: string): jwt.JwtPayload | null {
+        try {
+            return jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+        } catch (error) {
+            return null;
+        }
+    }
 }

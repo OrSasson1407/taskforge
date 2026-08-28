@@ -1,27 +1,37 @@
-import { Firestore } from '@google-cloud/firestore';
-
-const BASE_DELAY_MS = 1000;
-const MAX_DELAY_MS = 60000;
-const JITTER_FACTOR = 0.2;
+﻿import { getFirestore } from 'firebase-admin/firestore';
+import { JobState } from '../../shared/src/Job';
 
 export class RetryManager {
-  constructor(private db: Firestore) {}
+    static async recordJobFailure(jobId: string, reason: string): Promise<void> {
+        const db = getFirestore();
+        const jobRef = db.collection('jobs').doc(jobId);
+        
+        await db.runTransaction(async (t) => {
+            const doc = await t.get(jobRef);
+            if (!doc.exists) throw new Error('Job not found');
+            
+            const job = doc.data() as any;
+            const retries = job.retryCount || 0;
+            const maxRetries = job.maxRetries || 3;
+            
+            const nextState: JobState = retries >= maxRetries ? 'FAILED' : 'PENDING';
+            const now = Date.now();
+            
+            t.update(jobRef, {
+                state: nextState,
+                retryCount: retries + (nextState === 'PENDING' ? 1 : 0),
+                updatedAt: now,
+                assignedWorker: null // clear worker so it can be picked up again
+            });
 
-  computeBackoff(attempt: number): number {
-    const base = BASE_DELAY_MS * Math.pow(2, attempt - 1);
-    const capped = Math.min(base, MAX_DELAY_MS);
-    const jitter = Math.random() * (capped * JITTER_FACTOR);
-    return Math.floor(capped + jitter);
-  }
-
-  async handleFailure(jobId: string, currentAttempt: number, maxAttempts: number) {
-    const jobRef = this.db.collection('jobs').doc(jobId);
-    
-    if (currentAttempt < maxAttempts) {
-      const delayMs = this.computeBackoff(currentAttempt);
-      await jobRef.update({ state: 'RETRY_PENDING', nextRetryAt: Date.now() + delayMs });
-    } else {
-      await jobRef.update({ state: 'DEAD_LETTER' });
+            const eventRef = jobRef.collection('events').doc();
+            t.set(eventRef, {
+                id: eventRef.id,
+                jobId: doc.id,
+                state: nextState,
+                timestamp: now,
+                message: \Job failed: \. Transitioned to \\
+            });
+        });
     }
-  }
 }

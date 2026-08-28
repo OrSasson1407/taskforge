@@ -1,15 +1,28 @@
-# Chaos Test: Simulates sudden worker death mid-execution[cite: 3]
-Write-Host "Initiating Chaos Test: Killing a worker container..." -ForegroundColor Yellow
+﻿param (
+    [int] = 50,
+    [string]
+)
 
-$workers = docker ps -q -f "name=worker"
-if (-not $workers) {
-    Write-Host "No active workers found." -ForegroundColor Red
+if (-not $Token) {
+    Write-Host "Please provide a valid Admin JWT token." -ForegroundColor Red
     exit 1
 }
 
-# Pick the first worker to kill
-$target = $workers[0]
-Write-Host "Killing worker container: $target"
-docker kill $target | Out-Null
+Write-Host "Running Chaos Experiment: Killing $Percent% of workers..." -ForegroundColor Yellow
 
-Write-Host "Worker killed. Monitor dashboard to verify Failure Detector reclaims its jobs within the 10s timeout + 15s suspicion window." -ForegroundColor Green
+$Headers = @{
+    "Authorization" = "Bearer $Token"
+    "Content-Type"  = "application/json"
+}
+
+$Body = @{
+    percent = $Percent
+} | ConvertTo-Json
+
+try {
+    $Response = Invoke-RestMethod -Uri "http://localhost:8080/simulation/chaos/kill-workers" -Method Post -Headers $Headers -Body $Body
+    Write-Host "Killed $($Response.killedCount) workers successfully." -ForegroundColor Green
+    Write-Host ($Response.killedIds | Out-String)
+} catch {
+    Write-Host "Chaos injection failed: $(_)" -ForegroundColor Red
+}

@@ -1,20 +1,21 @@
-const API_BASE = '/api/v1';
+﻿import axios from 'axios';
 
-export const api = {
-  // Submit a single job (FR-001)[cite: 3]
-  async submitJob(type: string, payload: any, priority = 0) {
-    const res = await fetch(\\/jobs\, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, payload, priority })
-    });
-    if (!res.ok) throw new Error('Failed to submit job');
-    return res.json();
-  },
+export const apiClient = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+});
 
-  async getMetrics() {
-    const res = await fetch(\\/metrics\);
-    if (!res.ok) throw new Error('Failed to fetch metrics');
-    return res.json();
-  }
+apiClient.interceptors.request.use(config => {
+    const token = localStorage.getItem('auth_token');
+    if (token && config.headers) {
+        config.headers.Authorization = \Bearer \\;
+    }
+    return config;
+});
+
+export const Api = {
+    login: (username: string, password: string) => apiClient.post('/auth/login', { username, password }),
+    getJobs: () => apiClient.get('/jobs'), // Assumes a list endpoint exists
+    getJobEvents: (id: string) => apiClient.get(\/jobs/\/events\),
+    getWorkers: () => apiClient.get('/workers'),
+    cancelJob: (id: string) => apiClient.post(\/jobs/\/cancel\)
 };

@@ -1,28 +1,20 @@
-export class TaskForgeWebSocket {
-  private ws: WebSocket | null = null;
-  private listeners: Record<string, Function[]> = {};
+﻿import { io, Socket } from 'socket.io-client';
 
-  connect(url = 'ws://localhost:8080') {
-    this.ws = new WebSocket(url);
+let socket: Socket | null = null;
 
-    this.ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      // At-most-once delivery handling for UI updates[cite: 3]
-      if (this.listeners[data.type]) {
-        this.listeners[data.type].forEach(cb => cb(data.payload));
-      }
-    };
+export const connectWebSocket = (onJobUpdate: (data: any) => void, onWorkerUpdate: (data: any) => void) => {
+    if (!socket) {
+        socket = io(import.meta.env.VITE_API_URL || 'http://localhost:8080');
+        
+        socket.on('connect', () => console.log('Connected to Orchestrator WebSocket'));
+        socket.on('job-update', onJobUpdate);
+        socket.on('worker-update', onWorkerUpdate);
+    }
+};
 
-    this.ws.onclose = () => {
-      console.warn('WebSocket disconnected. Dashboard will fallback and reconnect in 5s...');
-      setTimeout(() => this.connect(url), 5000);
-    };
-  }
-
-  on(eventType: string, callback: Function) {
-    if (!this.listeners[eventType]) this.listeners[eventType] = [];
-    this.listeners[eventType].push(callback);
-  }
-}
-
-export const wsClient = new TaskForgeWebSocket();
+export const disconnectWebSocket = () => {
+    if (socket) {
+        socket.disconnect();
+        socket = null;
+    }
+};

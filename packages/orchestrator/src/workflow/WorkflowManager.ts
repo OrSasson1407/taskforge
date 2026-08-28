@@ -1,37 +1,100 @@
-import { Firestore } from '@google-cloud/firestore';
+﻿import { getFirestore } from 'firebase-admin/firestore';
+import { WorkflowDef, WorkflowTaskDef } from '../../shared/src/Workflow';
+import { Job, JobState } from '../../shared/src/Job';
 
 export class WorkflowManager {
-  constructor(private db: Firestore) {}
+    static validateDAG(tasks: WorkflowTaskDef[]): void {
+        const inDegree = new Map<string, number>();
+        const adjList = new Map<string, string[]>();
 
-  // DFS-based cycle detection per Document 3[cite: 4]
-  validateDag(jobIds: string[], edges: { from: string, to: string }[]): string[] | null {
-    const graph: Record<string, string[]> = {};
-    jobIds.forEach(id => graph[id] = []);
-    edges.forEach(e => graph[e.from].push(e.to));
+        tasks.forEach(t => {
+            inDegree.set(t.id, 0);
+            adjList.set(t.id, []);
+        });
 
-    const color: Record<string, number> = {};
-    const WHITE = 0, GRAY = 1, BLACK = 2;
-    jobIds.forEach(id => color[id] = WHITE);
+        for (const t of tasks) {
+            for (const dep of (t.dependsOn || [])) {
+                if (!inDegree.has(dep)) {
+                    throw new Error(\Dependency \ referenced by \ does not exist in workflow.\);
+                }
+                adjList.get(dep)!.push(t.id);
+                inDegree.set(t.id, inDegree.get(t.id)! + 1);
+            }
+        }
 
-    for (const id of jobIds) {
-      if (color[id] === WHITE) {
-        const cycle = this.dfs(id, graph, color, [id]);
-        if (cycle) return cycle;
-      }
+        const queue: string[] = [];
+        for (const [node, degree] of inDegree.entries()) {
+            if (degree === 0) queue.push(node);
+        }
+
+        let visitedCount = 0;
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            visitedCount++;
+            for (const neighbor of adjList.get(current)!) {
+                inDegree.set(neighbor, inDegree.get(neighbor)! - 1);
+                if (inDegree.get(neighbor) === 0) queue.push(neighbor);
+            }
+        }
+
+        if (visitedCount !== tasks.length) {
+            throw new Error('Cycle detected in workflow DAG. Tasks must form a directed acyclic graph.');
+        }
     }
-    return null;
-  }
 
-  private dfs(node: string, graph: Record<string, string[]>, color: Record<string, number>, path: string[]): string[] | null {
-    color[node] = 1; // GRAY
-    for (const neighbor of graph[node] || []) {
-      if (color[neighbor] === 1) return [...path, neighbor];
-      if (color[neighbor] === 0) {
-        const result = this.dfs(neighbor, graph, color, [...path, neighbor]);
-        if (result) return result;
-      }
+    static async submitWorkflow(def: WorkflowDef): Promise<{ workflowId: string, jobs: Job[] }> {
+        this.validateDAG(def.tasks);
+
+        const db = getFirestore();
+        const batch = db.batch();
+        const now = Date.now();
+        
+        const workflowRef = db.collection('workflows').doc();
+        batch.set(workflowRef, {
+            id: workflowRef.id,
+            name: def.name,
+            state: 'RUNNING',
+            createdAt: now
+        });
+
+        // Map local task IDs to global job IDs
+        const idMap = new Map<string, string>();
+        def.tasks.forEach(t => idMap.set(t.id, db.collection('jobs').doc().id));
+
+        const createdJobs: Job[] = [];
+
+        for (const t of def.tasks) {
+            const globalId = idMap.get(t.id)!;
+            const jobRef = db.collection('jobs').doc(globalId);
+            
+            const dependencies = (t.dependsOn || []).map(localDep => idMap.get(localDep)!);
+            const state: JobState = dependencies.length > 0 ? 'BLOCKED' : 'PENDING';
+
+            const job: Job = {
+                id: globalId,
+                workflowId: workflowRef.id,
+                localId: t.id,
+                state,
+                payload: t.payload,
+                dependencies,
+                createdAt: now,
+                updatedAt: now
+            };
+
+            batch.set(jobRef, job);
+            createdJobs.push(job);
+
+            const eventRef = jobRef.collection('events').doc();
+            batch.set(eventRef, {
+                id: eventRef.id,
+                jobId: globalId,
+                state,
+                timestamp: now,
+                message: \Workflow \ created task\
+            });
+        }
+
+        await batch.commit();
+        return { workflowId: workflowRef.id, jobs: createdJobs };
     }
-    color[node] = 2; // BLACK
-    return null;
-  }
 }

@@ -1,28 +1,40 @@
-import { Firestore } from '@google-cloud/firestore';
-import { WorkerNode } from '@taskforge/shared/src/Worker';
+﻿import { getFirestore } from 'firebase-admin/firestore';
+import { WorkerNode } from '../../shared/src/Worker';
 
 export class WorkerManager {
-  constructor(private db: Firestore) {}
+    static async registerWorker(id: string, capabilities: string[]): Promise<WorkerNode> {
+        const db = getFirestore();
+        const worker: WorkerNode = {
+            id,
+            state: 'IDLE',
+            capabilities,
+            lastHeartbeat: Date.now()
+        };
+        await db.collection('workers').doc(id).set(worker);
+        return worker;
+    }
 
-  async registerWorker(workerId: string, capabilities: string[], capacity: any): Promise<void> {
-    const workerRef = this.db.collection('workers').doc(workerId);
-    await workerRef.set({
-      state: 'IDLE',
-      capabilities,
-      resourceCapacity: capacity,
-      currentLoad: { activeJobs: 0, cpu: 0, memoryMb: 0 },
-      lastHeartbeatAt: Date.now(),
-      registeredAt: Date.now()
-    } as Partial<WorkerNode>);
-  }
+    static async recordHeartbeat(id: string): Promise<void> {
+        const db = getFirestore();
+        const workerRef = db.collection('workers').doc(id);
+        const doc = await workerRef.get();
+        
+        if (!doc.exists) {
+            throw new Error('Worker not registered');
+        }
+        
+        await workerRef.update({
+            lastHeartbeat: Date.now()
+        });
+    }
 
-  async handleHeartbeat(workerId: string, currentLoad: any): Promise<void> {
-    const workerRef = this.db.collection('workers').doc(workerId);
-    // Update load and timestamp, clearing UNHEALTHY state if recovering[cite: 4]
-    await workerRef.update({
-      lastHeartbeatAt: Date.now(),
-      currentLoad,
-      state: 'IDLE' // Simplified for v.1; full state machine applies here
-    });
-  }
+    static async getActiveWorkers(stalenessThresholdMs: number = 15000): Promise<WorkerNode[]> {
+        const db = getFirestore();
+        const cutoff = Date.now() - stalenessThresholdMs;
+        const snapshot = await db.collection('workers')
+            .where('lastHeartbeat', '>=', cutoff)
+            .get();
+        
+        return snapshot.docs.map(doc => doc.data() as WorkerNode);
+    }
 }

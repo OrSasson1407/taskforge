@@ -1,16 +1,17 @@
-export type WorkflowState = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
-
-export interface Edge {
-  from: string;
-  to: string;
+﻿export interface WorkflowTaskDef {
+    id: string; // Local identifier within the workflow
+    payload: Record<string, any>;
+    dependsOn?: string[]; // Array of local task IDs this task depends on
 }
 
-export interface Workflow {
-  id: string;
-  state: WorkflowState;
-  jobIds: string[];
-  edges: Edge[];
-  partialFailurePolicy: 'HALT_DEPENDENTS' | 'CONTINUE_INDEPENDENT_BRANCHES'; // Default policy per Document 3, Part F[cite: 4]
-  createdAt: number;
-  updatedAt: number;
+export interface WorkflowDef {
+    name: string;
+    tasks: WorkflowTaskDef[];
+}
+
+export interface WorkflowInstance {
+    id: string;
+    name: string;
+    state: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'PARTIAL_FAILURE';
+    createdAt: number;
 }

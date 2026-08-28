@@ -1,40 +1,26 @@
-import { Firestore } from '@google-cloud/firestore';
-import { randomUUID } from 'crypto';
+﻿import { getFirestore } from 'firebase-admin/firestore';
+import { WorkerManager } from '../worker-manager/WorkerManager';
 
 export class SimulationEngine {
-  constructor(private db: Firestore) {}
+    static async triggerChaosKill(percentile: number): Promise<string[]> {
+        const workers = await WorkerManager.getActiveWorkers();
+        if (workers.length === 0) return [];
 
-  // Generate synthetic load within isolated namespace[cite: 4]
-  async launchSimulation(jobCount: number, workerCount: number) {
-    const simId = randomUUID();
-    const simRef = this.db.collection('simulations').doc(simId);
-    
-    await simRef.set({
-      state: 'RUNNING',
-      config: { jobCount, workerCount },
-      startedAt: Date.now()
-    });
+        const killCount = Math.max(1, Math.floor(workers.length * (percentile / 100)));
+        const shuffled = workers.sort(() => 0.5 - Math.random());
+        const toKill = shuffled.slice(0, killCount);
+        
+        const db = getFirestore();
+        const batch = db.batch();
+        const killedIds: string[] = [];
 
-    console.log(\Launched Simulation \ with \ jobs.\);
+        for (const worker of toKill) {
+            const ref = db.collection('workers').doc(worker.id);
+            batch.update(ref, { state: 'OFFLINE' });
+            killedIds.push(worker.id);
+        }
 
-    // Bulk create jobs in the isolated simulation collection
-    const batch = this.db.batch();
-    for (let i = 0; i < jobCount; i++) {
-      const jobRef = simRef.collection('jobs').doc();
-      batch.set(jobRef, {
-        type: 'synthetic-task',
-        state: 'QUEUED',
-        priority: Math.floor(Math.random() * 10),
-        createdAt: Date.now()
-      });
+        await batch.commit();
+        return killedIds;
     }
-    await batch.commit();
-
-    return simId;
-  }
-
-  async injectFailureEvent(simId: string, failPercentage: number) {
-    console.log(\Injecting \% failure into simulation \\);
-    // This will toggle worker heartbeats to exercise the real FailureDetector[cite: 4]
-  }
 }
