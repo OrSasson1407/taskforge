@@ -1,4 +1,4 @@
-﻿import { Server as HttpServer } from 'http';
+import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
 export class EventPublisher {
@@ -13,9 +13,9 @@ export class EventPublisher {
         });
 
         this.io.on('connection', (socket) => {
-            console.log(\[WebSocket] Client connected: \\);
+            console.log(`[WebSocket] Client connected: ${socket.id}`);
             socket.on('disconnect', () => {
-                console.log(\[WebSocket] Client disconnected: \\);
+                console.log(`[WebSocket] Client disconnected: ${socket.id}`);
             });
         });
     }

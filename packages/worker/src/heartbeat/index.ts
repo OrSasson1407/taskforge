@@ -1,11 +1,11 @@
 export function startHeartbeat(orchestratorUrl: string, workerId: string, token: string, intervalMs = 5000) {
   setInterval(async () => {
     try {
-      await fetch(\\/api/v1/workers/\/heartbeat\, {
+      await fetch(`${orchestratorUrl}/workers/${workerId}/heartbeat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': \Bearer \\
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           currentLoad: { activeJobs: 0, cpu: 0.1, memoryMb: 128 } // Stub metric

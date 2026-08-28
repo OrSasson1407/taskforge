@@ -1,4 +1,4 @@
-﻿import request from 'supertest';
+import request from 'supertest';
 import { app } from '../../packages/orchestrator/src/api/ApiGateway';
 import { AuthService } from '../../packages/orchestrator/src/auth/AuthService';
 
@@ -12,7 +12,7 @@ describe('Phase 6 - Dependencies & Workflows', () => {
     it('Rejects a workflow with a cycle', async () => {
         const res = await request(app)
             .post('/workflows')
-            .set('Authorization', \Bearer \\)
+            .set('Authorization', `Bearer ${token}`)
             .send({
                 name: 'Cycle Test',
                 tasks: [
@@ -29,7 +29,7 @@ describe('Phase 6 - Dependencies & Workflows', () => {
     it('Rejects a workflow with missing dependencies', async () => {
         const res = await request(app)
             .post('/workflows')
-            .set('Authorization', \Bearer \\)
+            .set('Authorization', `Bearer ${token}`)
             .send({
                 name: 'Missing Dep Test',
                 tasks: [
@@ -44,7 +44,7 @@ describe('Phase 6 - Dependencies & Workflows', () => {
     it('Successfully submits a valid DAG', async () => {
         const res = await request(app)
             .post('/workflows')
-            .set('Authorization', \Bearer \\)
+            .set('Authorization', `Bearer ${token}`)
             .send({
                 name: 'Valid DAG',
                 tasks: [

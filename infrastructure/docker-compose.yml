@@ -15,6 +15,12 @@ services:
       - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
     ports:
       - '8067:8080'
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     depends_on:
       - redis
       - firestore-emulator
@@ -26,8 +32,10 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - ORCHESTRATOR_URL=http://orchestrator:8080
     depends_on:
-      - orchestrator
+      orchestrator:
+        condition: service_healthy
 
   firestore-emulator:
     image: google/cloud-sdk:emulators

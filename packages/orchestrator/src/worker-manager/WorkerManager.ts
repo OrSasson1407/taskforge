@@ -1,5 +1,5 @@
-﻿import { getFirestore } from 'firebase-admin/firestore';
-import { WorkerNode } from '../../shared/src/Worker';
+import { getFirestore } from 'firebase-admin/firestore';
+import { WorkerNode } from '../../../shared/src/Worker';
 
 export class WorkerManager {
     static async registerWorker(id: string, capabilities: string[]): Promise<WorkerNode> {

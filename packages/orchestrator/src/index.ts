@@ -1,4 +1,5 @@
-﻿import { app } from './api/ApiGateway';
+import './firebase';
+import { app } from './api/ApiGateway';
 import { Scheduler } from './scheduler/Scheduler';
 import { EventPublisher } from './events/EventPublisher';
 import { createServer } from 'http';

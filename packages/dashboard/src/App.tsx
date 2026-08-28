@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Auth } from './views/Auth';
 import { connectWebSocket, disconnectWebSocket } from './services/websocket';
 
@@ -9,8 +9,8 @@ export const App: React.FC = () => {
     useEffect(() => {
         if (isAuthenticated) {
             connectWebSocket(
-                (jobEvent) => setLastEvent(\Job \ -> \\),
-                (workerEvent) => setLastEvent(\Worker \ -> \\)
+                (jobEvent) => setLastEvent(`Job ${jobEvent.jobId} -> ${jobEvent.state}`),
+                (workerEvent) => setLastEvent(`Worker ${workerEvent.workerId} -> ${workerEvent.state}`)
             );
         }
         return () => disconnectWebSocket();

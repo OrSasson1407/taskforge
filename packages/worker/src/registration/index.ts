@@ -1,9 +1,9 @@
 export async function registerWorker(orchestratorUrl: string, token: string, capacity: any) {
-  const res = await fetch(\\/api/v1/workers/register\, {
+  const res = await fetch(`${orchestratorUrl}/workers/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': \Bearer \\
+      'Authorization': `Bearer ${token}`
     },
     body: JSON.stringify(capacity)
   });

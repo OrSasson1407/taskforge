@@ -1,4 +1,4 @@
-﻿import request from 'supertest';
+import request from 'supertest';
 import { app } from '../../packages/orchestrator/src/api/ApiGateway';
 import { AuthService } from '../../packages/orchestrator/src/auth/AuthService';
 
@@ -24,7 +24,7 @@ describe('Phase 1 - Auth & Core Job Model', () => {
     it('POST /jobs with auth creates a job', async () => {
         const res = await request(app)
             .post('/jobs')
-            .set('Authorization', \Bearer \\)
+            .set('Authorization', `Bearer ${token}`)
             .send({ payload: { data: 'val' } });
         
         expect(res.status).toBe(201);
@@ -34,8 +34,8 @@ describe('Phase 1 - Auth & Core Job Model', () => {
 
     it('GET /jobs/:id/events fetches event history subcollection', async () => {
         const res = await request(app)
-            .get(\/jobs/\/events\)
-            .set('Authorization', \Bearer \\);
+            .get(`/jobs/${createdJobId}/events`)
+            .set('Authorization', `Bearer ${token}`);
         
         expect(res.status).toBe(200);
         expect(res.body.length).toBe(1);

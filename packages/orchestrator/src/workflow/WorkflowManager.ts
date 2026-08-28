@@ -1,6 +1,6 @@
-﻿import { getFirestore } from 'firebase-admin/firestore';
-import { WorkflowDef, WorkflowTaskDef } from '../../shared/src/Workflow';
-import { Job, JobState } from '../../shared/src/Job';
+import { getFirestore } from 'firebase-admin/firestore';
+import { WorkflowDef, WorkflowTaskDef } from '../../../shared/src/Workflow';
+import { Job, JobState } from '../../../shared/src/Job';
 
 export class WorkflowManager {
     static validateDAG(tasks: WorkflowTaskDef[]): void {
@@ -15,7 +15,7 @@ export class WorkflowManager {
         for (const t of tasks) {
             for (const dep of (t.dependsOn || [])) {
                 if (!inDegree.has(dep)) {
-                    throw new Error(\Dependency \ referenced by \ does not exist in workflow.\);
+                    throw new Error(`Dependency ${dep} referenced by ${t.id} does not exist in workflow.`);
                 }
                 adjList.get(dep)!.push(t.id);
                 inDegree.set(t.id, inDegree.get(t.id)! + 1);
@@ -90,7 +90,7 @@ export class WorkflowManager {
                 jobId: globalId,
                 state,
                 timestamp: now,
-                message: \Workflow \ created task\
+                message: `Workflow ${workflowRef.id} created task`
             });
         }
 

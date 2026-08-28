@@ -1,7 +1,7 @@
-﻿import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../auth/AuthService';
 import { getFirestore } from 'firebase-admin/firestore';
-import { isValidJobTransition, JobState } from '../../shared/src/Job';
+import { isValidJobTransition, JobState } from '../../../shared/src/Job';
 
 export const app = express();
 app.use(express.json());
@@ -82,7 +82,7 @@ app.get('/jobs/:id', async (req, res) => {
 
 app.get('/jobs/:id/events', async (req, res) => {
     const snapshot = await getFirestore().collection('jobs').doc(req.params.id).collection('events').orderBy('timestamp', 'asc').get();
-    const events = snapshot.docs.map(d => d.data());
+    const events = snapshot.docs.map((d: any) => d.data());
     res.json(events);
 });
 
@@ -99,7 +99,7 @@ app.patch('/jobs/:id/state', async (req, res) => {
             
             const currentJob = doc.data() as any;
             if (!isValidJobTransition(currentJob.state, newState)) {
-                throw new Error(\Invalid state transition from \ to \\);
+                throw new Error(`Invalid state transition from ${currentJob.state} to ${newState}`);
             }
 
             const now = Date.now();
@@ -114,7 +114,7 @@ app.patch('/jobs/:id/state', async (req, res) => {
                 jobId: jobRef.id,
                 state: newState,
                 timestamp: now,
-                message: message || \Transitioned to \\
+                message: message || `Transitioned to ${newState}`
             });
         });
         
@@ -260,7 +260,7 @@ app.post('/simulation/chaos/kill-workers', requireRole('admin'), async (req, res
         const killed = await SimulationEngine.triggerChaosKill(percent || 50);
         await auditLog(req, 'CHAOS_KILL_WORKERS', killed.join(','));
         
-        Logger.info(\Simulated worker crash for \ workers\);
+        Logger.info(`Simulated worker crash for ${killed.length} workers`);
         res.status(200).json({ status: 'ok', killedCount: killed.length, killedIds: killed });
     } catch (error: any) {
         res.status(500).json({ error: error.message });

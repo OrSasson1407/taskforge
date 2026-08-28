@@ -1,7 +1,7 @@
-﻿import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { WorkerManager } from '../worker-manager/WorkerManager';
-import { redisClient } from '../../shared/src/redis/RedisClient';
-import { JobState } from '../../shared/src/Job';
+import { redisClient } from '../../../shared/src/redis/RedisClient';
+import { JobState } from '../../../shared/src/Job';
 
 export class Scheduler {
     static async scheduleJobs(): Promise<number> {
@@ -51,12 +51,12 @@ export class Scheduler {
                 jobId: job.id,
                 state: 'SCHEDULED' as JobState,
                 timestamp: now,
-                message: \Assigned to worker \\
+                message: `Assigned to worker ${worker.id}`
             });
 
             // 4. Redis Streams Assignment Transport
             await redisClient.xadd(
-                \worker:\:jobs\,
+                `worker:${worker.id}:jobs`,
                 '*',
                 'jobId', job.id,
                 'payload', JSON.stringify(job.payload)
@@ -70,12 +70,12 @@ export class Scheduler {
     }
 
     static startPolling(intervalMs: number = 5000) {
-        console.log(\[Scheduler] Starting polling loop (\ms)...\);
+        console.log(`[Scheduler] Starting polling loop (${intervalMs}ms)...`);
         setInterval(async () => {
             try {
                 const count = await this.scheduleJobs();
                 if (count > 0) {
-                    console.log(\[Scheduler] Successfully scheduled \ jobs.\);
+                    console.log(`[Scheduler] Successfully scheduled ${count} jobs.`);
                 }
             } catch (err: any) {
                 console.error('[Scheduler] Error during scheduling cycle:', err.message);

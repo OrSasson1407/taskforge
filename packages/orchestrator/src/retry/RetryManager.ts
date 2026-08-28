@@ -1,5 +1,5 @@
-﻿import { getFirestore } from 'firebase-admin/firestore';
-import { JobState } from '../../shared/src/Job';
+import { getFirestore } from 'firebase-admin/firestore';
+import { JobState } from '../../../shared/src/Job';
 
 export class RetryManager {
     static async recordJobFailure(jobId: string, reason: string): Promise<void> {
@@ -30,7 +30,7 @@ export class RetryManager {
                 jobId: doc.id,
                 state: nextState,
                 timestamp: now,
-                message: \Job failed: \. Transitioned to \\
+                message: `Job failed: ${reason}. Transitioned to ${nextState}`
             });
         });
     }

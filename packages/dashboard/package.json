@@ -8,9 +8,11 @@
   },
   "dependencies": {
     "@taskforge/shared": "*",
+    "axios": "^1.7.7",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.18.2",
+    "socket.io-client": "^4.7.5",
     "vitest": "4.1.11"
   },
   "devDependencies": {

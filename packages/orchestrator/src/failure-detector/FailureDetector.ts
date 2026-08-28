@@ -1,5 +1,5 @@
-﻿import { getFirestore } from 'firebase-admin/firestore';
-import { JobState } from '../../shared/src/Job';
+import { getFirestore } from 'firebase-admin/firestore';
+import { JobState } from '../../../shared/src/Job';
 
 export class FailureDetector {
     static async sweep(): Promise<number> {
@@ -48,7 +48,7 @@ export class FailureDetector {
                         jobId: doc.id,
                         state: nextState,
                         timestamp: now,
-                        message: \Worker \ died. Reclaimed job. (Retry \/\)\
+                        message: `Worker ${workerId} died. Reclaimed job. (Retry ${retries + 1}/${maxRetries})`
                     });
                     reclaimedCount++;
                 });
