@@ -88,25 +88,24 @@ app.get('/jobs/:id/events', async (req, res) => {
 });
 
 // Phase 2: State Machine & Cancellation
-app.patch('/jobs/:id/state', async (req, res) => {
-    const { newState, message } = req.body;
+async function transitionJobState(id: string, newState: JobState, message?: string) {
     const db = getFirestore();
-    const jobRef = db.collection('jobs').doc(req.params.id);
+    const jobRef = db.collection('jobs').doc(id);
 
     try {
         await db.runTransaction(async (t) => {
             const doc = await t.get(jobRef);
             if (!doc.exists) throw new Error('Job not found');
-            
+
             const currentJob = doc.data() as any;
             if (!isValidJobTransition(currentJob.state, newState)) {
                 throw new Error(`Invalid state transition from ${currentJob.state} to ${newState}`);
             }
 
             const now = Date.now();
-            t.update(jobRef, { 
-                state: newState, 
-                updatedAt: now 
+            t.update(jobRef, {
+                state: newState,
+                updatedAt: now
             });
 
             const eventRef = jobRef.collection('events').doc();
@@ -118,19 +117,24 @@ app.patch('/jobs/:id/state', async (req, res) => {
                 message: message || `Transitioned to ${newState}`
             });
         });
-        
+
         const updatedDoc = await jobRef.get();
-        res.json(updatedDoc.data());
+        return { status: 200, body: updatedDoc.data() };
     } catch (error: any) {
-        if (error.message === 'Job not found') return res.status(404).json({ error: error.message });
-        res.status(400).json({ error: error.message });
+        if (error.message === 'Job not found') return { status: 404, body: { error: error.message } };
+        return { status: 400, body: { error: error.message } };
     }
+}
+
+app.patch('/jobs/:id/state', async (req, res) => {
+    const { newState, message } = req.body;
+    const result = await transitionJobState(req.params.id, newState, message);
+    res.status(result.status).json(result.body);
 });
 
 app.post('/jobs/:id/cancel', async (req, res) => {
-    req.body = { newState: 'CANCELLED', message: 'Job cancelled by user request' };
-    // Forward to state transition handler
-    app._router.handle(req, res, () => {});
+    const result = await transitionJobState(req.params.id, 'CANCELLED', 'Job cancelled by user request');
+    res.status(result.status).json(result.body);
 });
 
 // Phase 3: Worker Registration & Heartbeat

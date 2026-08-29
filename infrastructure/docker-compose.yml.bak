@@ -1,26 +1,10 @@
-﻿services:
+﻿version: '3.8'
+services:
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes
     ports:
       - '6367:6379'
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  firestore-emulator:
-    build:
-      context: ./firestore-emulator
-    ports:
-      - '8085:8080'
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
 
   orchestrator:
     build:
@@ -32,10 +16,8 @@
     ports:
       - '8067:8080'
     depends_on:
-      redis:
-        condition: service_healthy
-      firestore-emulator:
-        condition: service_healthy
+      - redis
+      - firestore-emulator
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
       interval: 10s
@@ -52,8 +34,13 @@
       - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
       - ORCHESTRATOR_URL=http://orchestrator:8080
     depends_on:
-      orchestrator:
-        condition: service_healthy
+      - orchestrator
+
+  firestore-emulator:
+    image: google/cloud-sdk:alpine
+    command: gcloud beta emulators firestore start --host-port=0.0.0.0:8080
+    ports:
+      - '8080:8080'
 
   dashboard:
     build:
