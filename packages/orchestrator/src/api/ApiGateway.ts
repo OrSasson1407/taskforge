@@ -1,4 +1,4 @@
-﻿import '../firebase';
+import '../firebase';
 import express, { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../auth/AuthService';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -140,25 +140,37 @@ app.post('/jobs/:id/cancel', async (req, res) => {
 // Phase 3: Worker Registration & Heartbeat
 import { WorkerManager } from '../worker-manager/WorkerManager';
 
-app.post('/workers/register', async (req, res) => {
+const requireWorkerAuth = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+    if (!AuthService.isValidWorkerCredential(token)) {
+        return res.status(401).json({ error: 'Invalid or missing worker credential' });
+    }
+    next();
+};
+
+app.post('/workers/register', requireWorkerAuth, async (req, res) => {
     try {
-        const { id, capabilities } = req.body;
+        const { id, capabilities, resourceCapacity } = req.body;
         if (!id) return res.status(400).json({ error: 'Worker ID required' });
-        
-        const worker = await WorkerManager.registerWorker(id, capabilities || ['default']);
+
+        const worker = await WorkerManager.registerWorker(id, capabilities || ['default'], resourceCapacity);
         res.status(201).json(worker);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
 });
 
-app.post('/workers/:id/heartbeat', async (req, res) => {
+app.post('/workers/:id/heartbeat', requireWorkerAuth, async (req, res) => {
     try {
-        await WorkerManager.recordHeartbeat(req.params.id);
-        res.status(200).json({ status: 'ok' });
+        const worker = await WorkerManager.recordHeartbeat(req.params.id, req.body?.currentLoad);
+        res.status(200).json({ status: 'ok', state: worker.state });
     } catch (error: any) {
         if (error.message === 'Worker not registered') {
             return res.status(404).json({ error: error.message });
+        }
+        if (error.message.includes('offline')) {
+            return res.status(409).json({ error: error.message });
         }
         res.status(500).json({ error: error.message });
     }

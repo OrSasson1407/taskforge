@@ -1,4 +1,4 @@
-﻿services:
+services:
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes
@@ -29,6 +29,8 @@
     environment:
       - REDIS_URL=redis://redis:6379
       - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
+      - JWT_SECRET=${JWT_SECRET:-dev_secret_replace_in_prod}
+      - WORKER_AUTH_TOKEN=${WORKER_AUTH_TOKEN:-dev_worker_token}
     ports:
       - '8067:8080'
     depends_on:
@@ -51,6 +53,7 @@
       - REDIS_URL=redis://redis:6379
       - FIRESTORE_EMULATOR_HOST=firestore-emulator:8080
       - ORCHESTRATOR_URL=http://orchestrator:8080
+      - WORKER_AUTH_TOKEN=${WORKER_AUTH_TOKEN:-dev_worker_token}
     depends_on:
       orchestrator:
         condition: service_healthy
